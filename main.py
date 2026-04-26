@@ -1,5 +1,6 @@
 import numpy as np
 import math
+from typing import Optional
 # Receptive field creation
 class SUSTAIN:
     def __init__(
@@ -10,7 +11,7 @@ class SUSTAIN:
         eta: float = 0.09361126,
         tau: float = 0.5,
         supervised: bool = True,
-        queried_dim: int = -1,
+        query_dim: int = -1,
     ):
         self.r = r
         self.beta = beta
@@ -18,7 +19,7 @@ class SUSTAIN:
         self.eta = eta
         self.tau = tau
         self.supervised = supervised
-        self.queried_dim = queried_dim  # will be resolved after first stimulus
+        self.query_dim = query_dim  # will be resolved after first stimulus
 
         # These are set after the first call to reset() or the first trial
         self.n_dims: int = 0
@@ -91,7 +92,7 @@ class SUSTAIN:
         sl = self.dim_slice(dim)
         I_dim = I_pos[sl]
         t=np.where(I_dim ==1,
-                   np.max(C_out, 1.0)
+                   np.max(C_out, 1.0),
                    np.min(C_out, 0.0))
         return t
     
@@ -258,7 +259,7 @@ class SUSTAIN:
             'activations': activations
             }
         
-    def predict(self, stimulus: list[int], queried_dim: Optional[int] = None) -> np.ndarray:
+    def predict(self, stimulus: list[int], query_dim: Optional[int] = None) -> np.ndarray:
         
         q_dim = query_dim if query_dim is not None else self.query_dim_idx
         known_dims = [i for i, v in enumerate(stimulus) if v >=0 and i != q-dim]
