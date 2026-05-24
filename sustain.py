@@ -557,6 +557,8 @@ def demo_simple_classification():
 
     # Category A = feature 0; Category B = feature 1
     stimuli = [[0, 0], [0, 0], [1, 1], [1, 1], [0, 0], [1, 1]]
+    # objects are elements of the list
+    # features are numbers (either binary or multi)
     for i, stim in enumerate(stimuli):
         res = model.present_stimulus(stim, queried_dim=1)
         print(f"  Trial {i+1}: stim={stim}, response={res['response']}, "
