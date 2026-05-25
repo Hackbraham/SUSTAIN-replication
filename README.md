@@ -3,5 +3,4 @@ A remake of the SUSTAIN model created in https://www.gureckislab.org/publication
 
 ## Project outline
 
-### N.B. 
-For the purpose of this excercise, this project was created without any AI use 
+ 
