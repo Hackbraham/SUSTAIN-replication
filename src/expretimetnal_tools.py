@@ -44,7 +44,7 @@ def run_sustain_on_data(model: SUSTAIN, data: pd.DataFrame, queried_dim: int):
     })
 
     results.set_index("index", inplace=True)
-    return results
+    return results, model
 
 
 def encode_stimuli(data: pd.DataFrame):
@@ -61,8 +61,12 @@ def encode_stimuli(data: pd.DataFrame):
     encoder = OrdinalEncoder()
     encoded_stimuli = encoder.fit_transform(stimuli).astype(int).tolist()
 
+    # for debugging
+    # for i, cats in enumerate(encoder.categories_):
+    #     print(f"Dimension {i}: {list(cats)}")
+
     # compute the size of dimensions
     dim_sizes = [len(categories) for categories in encoder.categories_]
-    print(f"dim_sizes: {dim_sizes}")
+    # print(f"dim_sizes: {dim_sizes}")
 
     return encoded_stimuli, dim_sizes
