@@ -22,9 +22,37 @@ of "animal with a heart" and "animals with a kidneys".
 3. **Human categories are multifunctional.**
 4. **Human categories involve abstract concepts.**
 
+## Technical project description
+### Structure
+* `notebooks` - a folder with experiment and actual usage of SUSTAIN
+  * `datasets` - data for experiments
+  * `sustain_mushrooms.ipynb` - test of SUSTAIN on mushroom dataset
+* `src` - source code of the model
+  * `expretimetnal_tools.py` - a set of tools useful for conducting simple experiments
+  * `sustain.py` - the core of the model functionalities
 
+### Model principles of operation
+#TODO (stratified structure, adaptive recruitment, incremental learning, supervised 
+vs unsupervised)
 
+### Model workflow
 
+## SUSTAIN in experiments
+We conducted a series of experiments which aim was to test the model's performents in 
+a set of artifical scenarios imlemented in Shepard's paper as well as while working 
+with real datasets.
+
+### Shepard's experiments
+#TODO
+
+### Real datasets
+#### Mushrooms
+#TODO
+
+#### Another experiment
+#TODO
+
+## SUSTAIN's liminations
 
 
 ### N.B. 
