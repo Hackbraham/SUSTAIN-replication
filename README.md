@@ -39,7 +39,7 @@ vs unsupervised)
 
 ## SUSTAIN in experiments
 We conducted a series of experiments which aim was to test the model's performents in 
-a set of artifical scenarios imlemented in Shepard's paper as well as while working 
+a set of artificial scenarios implemented in Shepard's paper as well as while working 
 with real datasets.
 
 ### Shepard's experiments
@@ -47,7 +47,49 @@ with real datasets.
 
 ### Real datasets
 #### Mushrooms
-#TODO
+##### Dataset
+The mushroom [dataset](https://archive.ics.uci.edu/dataset/73/mushroom) is from UCI Machine
+Learning Repository and describes hypothetical samples that correspond to the mushrooms 
+from the _Agaricus_ and _Lepiota_ family. 
+
+There are 8124 observations with 22 features such as _bruises, odor or gill size_.
+The one that is most interesting for us is _poisonous_.
+
+##### Encoding
+We encoded the categorial featues of mushrooms into vectors by utilizing
+`OrdinalEncoder` from `sklearn`. Thus, 22 features were respectively repersented 
+by a 22 dimensions of a vector and each number of a given dimention characterized
+a certain feature. 
+
+```pycon
+[2, 6, 4, 10, 2, 8, 2, 2, 2, 11, 2, 5, 4, 4, 8, 8, 1, 4, 3, 5, 7, 6, 7]
+```
+For instance, _edible_ and _poisonous_ labels are located as first dimension (so
+the dimension = 2).
+
+##### Experiment
+We run 100 trial runs of SUSTAIN each time sampling 1000 rows from the dataset.
+In each turn we used supervised mode of learning by splitting the dataset into 
+train set (70%) and test set (30%) then forcing re-initialized SUSTAIN model 
+to predict if an observation is poisonous. 
+
+#### Results
+We computed the classical evaluation metrics for ML models: accuracy, recall,
+precision and f1-score.
+```pycon
+Mean Accuracy: 0.99
+Accuracy SD: 0.01
+
+Mean Precision: 1.0
+Precision SD: 0.0
+
+Mean Recall: 0.98
+Recall SD: 0.02
+
+Mean F1: 0.99
+F1 SD: 0.01
+```
+The model performed excellent. Very high accuracy 
 
 #### Another experiment
 #TODO

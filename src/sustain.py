@@ -379,7 +379,26 @@ class SUSTAIN:
             if not correct and not recruited:
                 self._recruit_cluster(full_I_pos)
                 recruited = True
-                # Recalculate everything with the new cluster
+
+                # PREVIOUS:
+                # activations = np.array([
+                #     self._cluster_activation(I_pos, self.H_pos[j], known_dims)
+                #     for j in range(self.n_clusters)
+                # ])
+                # H_out = self._cluster_output(activations)
+                # winner = int(np.argmax(H_out))
+                # C_out = self._output_units(H_out, q_dim)
+                # if np.all(C_out == 0):
+                #     probs = np.ones(self.dim_sizes[q_dim]) / self.dim_sizes[q_dim]
+                # else:
+                #     probs = self._response_prob(C_out)
+                # response = int(np.argmax(probs))
+
+                # ALEX'S FIX:
+                #  the newly recruited cluster's weights for the queried dimension
+                #  were initialized 0, so the recalculated choice probabilities
+                #  were uniform ([0.5, 0.5]), so argmax always returns 0 - that was the
+                #  reason for heaving precision param = 1
                 activations = np.array([
                     self._cluster_activation(I_pos, self.H_pos[j], known_dims)
                     for j in range(self.n_clusters)
@@ -387,11 +406,6 @@ class SUSTAIN:
                 H_out = self._cluster_output(activations)
                 winner = int(np.argmax(H_out))
                 C_out = self._output_units(H_out, q_dim)
-                if np.all(C_out == 0):
-                    probs = np.ones(self.dim_sizes[q_dim]) / self.dim_sizes[q_dim]
-                else:
-                    probs = self._response_prob(C_out)
-                response = int(np.argmax(probs))
 
         # --- Step 6: Learning updates (only when feedback is available) ---
         if target_val >= 0:
