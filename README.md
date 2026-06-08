@@ -75,7 +75,8 @@ to predict if an observation is poisonous.
 
 #### Results
 We computed the classical evaluation metrics for ML models: accuracy, recall,
-precision and f1-score.
+precision and f1-score. At the beggining our resuls were suprisingly 
+good. 
 ```pycon
 Mean Accuracy: 0.99
 Accuracy SD: 0.01
