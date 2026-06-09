@@ -58,10 +58,10 @@ class SUSTAIN:
 
     def __init__(
         self,
-        r: float = 2.844642,
-        beta: float = 2.386305,
-        d: float = 12.0,
-        eta: float = 0.09361126,
+        r: float = 9.01245, #2.844642,
+        beta: float = 1.252233, #2.386305,
+        d: float = 16.924073, #12.0,
+        eta: float = 0.092327, #0.09361126,
         tau: float = 0.5,
         supervised: bool = True,
         queried_dim: int = -1,
@@ -116,9 +116,33 @@ class SUSTAIN:
 
         self._queried_dim_idx = self._resolve_queried_dim(self.n_dims)
 
-    def reset(self, dim_sizes: list[int]):
-        """Reset the model for a new learning episode."""
+    def reset(
+        self,
+        dim_sizes: list[int],
+        initial_lambdas: Optional[list[float]] = None,
+    ):
+        """
+        Reset the model for a new learning episode.
+
+        Parameters
+        ----------
+        dim_sizes : list of int
+            Number of nominal values per dimension.
+        initial_lambdas : list of float, optional
+            Initial receptive-field tuning per dimension. Defaults to 1.0
+            for every dimension (the paper's standard setting). Studies that
+            give certain dimensions different a priori salience override this
+            (e.g., lambda_label in Yamauchi et al. 2002,
+            lambda_distinct in Medin et al. 1983).
+        """
         self._setup(dim_sizes)
+        if initial_lambdas is not None:
+            if len(initial_lambdas) != self.n_dims:
+                raise ValueError(
+                    f"initial_lambdas has length {len(initial_lambdas)} "
+                    f"but dim_sizes has {self.n_dims} dimensions."
+                )
+            self.lambdas = np.array(initial_lambdas, dtype=float)
 
     # ------------------------------------------------------------------
     # Encoding / decoding helpers
@@ -158,16 +182,28 @@ class SUSTAIN:
 
     def _distance(self, I_pos: np.ndarray, H_pos_j: np.ndarray, dim: int) -> float:
         """
-        Eq. 4: Distance delta_ij between stimulus and cluster j on dimension i.
-        delta_ij in [0, 1].
+        Eq. 4 (Love et al. 2004, p. 314): nominal-dimension distance.
+
+            mu_ij = (1/2) * sum_{k=1}^{v_i} |I^pos_ik - H^pos_jk|
+
+        v_i is the upper limit of the summation (the number of values on
+        the dim), NOT a denominator. The (1/2) factor alone bounds mu in
+        [0, 1] because one-hot input vectors yield a maximum absolute-
+        difference sum of 2 regardless of v_i.
         """
-        v_i = self.dim_sizes[dim]
         sl = self._dim_slice(dim)
         diff = I_pos[sl] - H_pos_j[sl]
-        return 0.5 * np.sum(np.abs(diff)) / v_i
+        return 0.5 * float(np.sum(np.abs(diff)))
 
     def _receptive_field(self, lam: float, delta: float) -> float:
-        """Eq. 1: Receptive field response exp(-lambda * delta)."""
+        """
+        Exponential kernel used inside Eq. 5: exp(-lambda * delta).
+
+        (This is NOT the full Eq. 1 receptive field alpha(mu) = lambda *
+        exp(-lambda * mu) — that form integrates to 1 over mu, but Eq. 5
+        uses just the exponential and normalises across dimensions via
+        the (lambda)^r weights instead.)
+        """
         return np.exp(-lam * delta)
 
     def _cluster_activation(
@@ -192,17 +228,25 @@ class SUSTAIN:
 
     def _cluster_output(self, activations: np.ndarray) -> np.ndarray:
         """
-        Eq. 6: Lateral inhibition / winner-take-all.
-        Returns output array; only the winner has non-zero output.
+        Eq. 6 (Love et al. 2004, p. 315): lateral-inhibition output.
+
+            H^out_j = (H^act_j)^beta / sum_i (H^act_i)^beta   for the winner
+            H^out_j = 0                                       for all other clusters
+
+        Power-normalisation: larger beta lets the winner dominate the
+        denominator (less inhibited); smaller beta spreads mass across
+        competitors (more inhibited). The returned array has the same
+        shape / dtype as `activations`, so downstream callers
+        (`_output_units`, `query_output`) are unaffected.
         """
         if len(activations) == 0:
             return np.array([])
         winner = int(np.argmax(activations))
-        H_act_winner = activations[winner]
-        denom = (np.sum(activations) - H_act_winner) ** self.beta + H_act_winner
+        powered = np.power(activations, self.beta)
+        denom = float(powered.sum())
         H_out = np.zeros(len(activations))
         if denom > 0:
-            H_out[winner] = H_act_winner / denom
+            H_out[winner] = powered[winner] / denom
         return H_out
 
     def _output_units(self, H_out: np.ndarray, dim: int) -> np.ndarray:
@@ -455,141 +499,23 @@ class SUSTAIN:
             return np.ones(self.dim_sizes[q_dim]) / self.dim_sizes[q_dim]
         return self._response_prob(C_out)
 
+    def query_output(self, stimulus: list[int], queried_dim: Optional[int] = None) -> np.ndarray:
+        """
+        Return the raw C^out activations (Eq. 7) for the queried dimension
+        without applying the Luce choice rule. Needed for forced-choice tasks
+        such as Billman & Knutson's (1996) test phase, where Eq. 8 is applied
+        across two stimuli rather than across values of a single dimension.
+        """
+        q_dim = queried_dim if queried_dim is not None else self._queried_dim_idx
+        known_dims = [i for i, v in enumerate(stimulus) if v >= 0 and i != q_dim]
+        I_pos = self._encode_stimulus(stimulus)
 
-# =============================================================================
-# Demonstration: Shepard, Hovland & Jenkins (1961) six-types problem
-# =============================================================================
+        if self.n_clusters == 0:
+            return np.zeros(self.dim_sizes[q_dim])
 
-def run_shepard_six_types(
-    n_simulations: int = 500,
-    max_blocks: int = 32,
-    criterion_blocks: int = 4,
-    params: Optional[dict] = None,
-    verbose: bool = True,
-) -> dict:
-    """
-    Replicate the Shepard, Hovland & Jenkins (1961) six classification
-    problem types.
-
-    Stimuli have 3 binary perceptual dimensions + 1 binary category label
-    (= 4 dimensions total). Dimension 3 (0-indexed) is the category label,
-    which is queried on every trial.
-
-    Returns
-    -------
-    dict mapping type_id (1–6) -> mean blocks to criterion
-    """
-    if params is None:
-        # Best-fitting parameters from Table 1 of the paper ("Six types")
-        params = dict(r=9.01245, beta=1.252233, d=16.924073, eta=0.092327)
-
-    # Logical structure from Table 2 (rows are stimuli, cols are type I–VI)
-    # Encoding: dimension values are 0 or 1 (paper uses 1/2, we use 0/1)
-    # Stimuli: [d1, d2, d3, label]
-    # Paper labels: 1→0, 2→1 for values; A→0, B→1 for categories
-    type_assignments = {
-        # (d1, d2, d3) -> [typeI, typeII, typeIII, typeIV, typeV, typeVI]
-        (0, 0, 0): [0, 0, 1, 1, 1, 1],
-        (0, 0, 1): [0, 0, 1, 1, 1, 0],
-        (0, 1, 0): [0, 1, 1, 1, 1, 0],
-        (0, 1, 1): [0, 1, 0, 0, 0, 1],
-        (1, 0, 0): [1, 1, 0, 1, 0, 0],
-        (1, 0, 1): [1, 1, 1, 0, 0, 1],
-        (1, 1, 0): [1, 0, 0, 0, 0, 1],
-        (1, 1, 1): [1, 0, 0, 0, 1, 0],
-    }
-
-    results = {}
-    for type_idx in range(6):
-        type_id = type_idx + 1
-        # Build stimulus list: [d1, d2, d3, label]
-        stimuli = []
-        for (d1, d2, d3), labels in type_assignments.items():
-            label = labels[type_idx]
-            stimuli.append([d1, d2, d3, label])
-
-        blocks_list = []
-        for _ in range(n_simulations):
-            model = SUSTAIN(
-                r=params['r'],
-                beta=params['beta'],
-                d=params['d'],
-                eta=params['eta'],
-                supervised=True,
-                queried_dim=3,  # category label is dim 3
-            )
-            model.reset(dim_sizes=[2, 2, 2, 2])
-
-            blocks_to_criterion = max_blocks
-            consecutive_correct_blocks = 0
-
-            for block in range(1, max_blocks + 1):
-                block_stimuli = stimuli.copy()
-                np.random.shuffle(block_stimuli)
-
-                block_correct = 0
-                for stim in block_stimuli:
-                    # Present with queried dim = -1 (unknown)
-                    query_stim = stim[:3] + [-1]  # hide label
-                    # But pass target via full stimulus
-                    result = model.present_stimulus(
-                        stim[:3] + [stim[3]],  # full stimulus (label known for update)
-                        queried_dim=3,
-                    )
-                    if result['correct']:
-                        block_correct += 1
-
-                if block_correct == len(stimuli):
-                    consecutive_correct_blocks += 1
-                else:
-                    consecutive_correct_blocks = 0
-
-                if consecutive_correct_blocks >= criterion_blocks:
-                    blocks_to_criterion = block - criterion_blocks + 1
-                    break
-
-            blocks_list.append(blocks_to_criterion)
-
-        mean_blocks = np.mean(blocks_list)
-        results[type_id] = mean_blocks
-        if verbose:
-            print(f"  Type {type_id}: {mean_blocks:.2f} blocks to criterion "
-                  f"(±{np.std(blocks_list):.2f})")
-
-    return results
-
-
-def demo_simple_classification():
-    """
-    Simple demo: learn that stimuli with dim0=0 are Category A, dim0=1 are B.
-    (A Type-I-like unidimensional rule.)
-    """
-    print("\n--- Simple unidimensional classification demo ---")
-    model = SUSTAIN(r=2.844642, beta=2.386305, d=12.0, eta=0.09361126,
-                    supervised=True, queried_dim=1)
-    model.reset(dim_sizes=[2, 2])  # dim0=feature, dim1=category
-
-    # Category A = feature 0; Category B = feature 1
-    stimuli = [[0, 0], [0, 0], [1, 1], [1, 1], [0, 0], [1, 1]]
-    # objects are elements of the list
-    # features are numbers (either binary or multi)
-    for i, stim in enumerate(stimuli):
-        res = model.present_stimulus(stim, queried_dim=1)
-        print(f"  Trial {i+1}: stim={stim}, response={res['response']}, "
-              f"correct={res['correct']}, clusters={res['n_clusters']}")
-
-
-if __name__ == "__main__":
-    np.random.seed(42)
-
-    demo_simple_classification()
-
-    print("\n--- Shepard et al. (1961) six types simulation ---")
-    print("(Running 500 simulations per type, this may take a moment...)\n")
-    print("Expected order of difficulty: Type I < II < III≈IV≈V < VI\n")
-
-    results = run_shepard_six_types(n_simulations=500, verbose=True)
-
-    print("\nSummary (blocks to criterion, lower = easier):")
-    for t in range(1, 7):
-        print(f"  Type {t}: {results[t]:.2f}")
+        activations = np.array([
+            self._cluster_activation(I_pos, self.H_pos[j], known_dims)
+            for j in range(self.n_clusters)
+        ])
+        H_out = self._cluster_output(activations)
+        return self._output_units(H_out, q_dim)
