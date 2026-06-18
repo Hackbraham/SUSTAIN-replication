@@ -22,11 +22,7 @@ from typing import Optional
 
 import numpy as np
 
-import os
-import sys
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src'))
-
-from sustain import SUSTAIN
+from src.sustain import SUSTAIN
 
 
 def _trial_correct(probs: np.ndarray, target: int,
