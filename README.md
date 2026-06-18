@@ -1,10 +1,17 @@
 # SUSTAIN-replication
+
+**AI**: This project was originally created without any AI use and then refined with Claude Code. 
+The `README.md` was created manually (no AI slop ;)), and then Claude and Quen 4B were used soely
+for grammatical correction. 
+
+
+
 A remake of the **SUSTAIN** model created in https://www.gureckislab.org/publications/love_etal_2004.pdf as a final project 
 for UW's Machine Learning course. 
 
 Done in collaboration with [Aleksander Kałuski](https://github.com/aleksKaluski).
 
-If you don't know what SUSTAIN is and you would like to use it, here is the summary of what SUSTAIN is:
+If you don't know what SUSTAIN is and you would like to use it, here is the summary:
 * Adaptive architecture, increasing complexity to suit the problem 
 * Unification of Supervised and Unsupervised Learning 
 * Rule-based and Similarity-based behavior according to the problem 
@@ -22,6 +29,22 @@ may perform poorly on simple problems._
 SUSTAIN, which is an abbreviation for _Supervised and Unsupervised STratified Adaptive Incremental Network_, 
 is essentially the response to CD that solves the problem by taking an inspiration from how people conceptualize categories.
 
+## Technical project description
+### Structure
+* `notebooks` - a folder with experiment and actual usage of SUSTAIN
+  * `datasets` - data for experiments
+  * `sustain_mushrooms.ipynb` - test of SUSTAIN on mushroom dataset
+* `src` - source code of the model
+  * `sustain.py` - the core of the model functionalities
+* `replications.py` - replications of various classical experiments
+
+### Quick start
+To run the program please install dependencies
+`pip install -r requirements.txt`
+
+Then run `python replications.py` in your terminal.
+
+## Theory behind the model
 ### How do humans conceptualize categories?
 1. **Human categories are correlated**, since some of them naturally co-occur. For instance, cats are included within
 a set of animals with whiskers, but also a with animals with paws (so do other animals). In the most extreme examples,
@@ -67,23 +90,6 @@ supplied label yields unsupervised learning. Because cluster recruitment, attent
 sensitive to the task and to the feedback the model receives, the substructure SUSTAIN discovers within a category is shaped jointly 
 by the statistical structure of the stimuli and by the goals and demands of the particular learning task, which is how the model accounts 
 for phenomena ranging from prototype-like abstraction to exemplar-like sensitivity to exceptions within a single architecture.
-
-## Technical project description
-### Structure
-* `notebooks` - a folder with experiment and actual usage of SUSTAIN
-  * `datasets` - data for experiments
-  * `sustain_mushrooms.ipynb` - test of SUSTAIN on mushroom dataset
-* `src` - source code of the model
-  * `sustain.py` - the core of the model functionalities
-* `replications.py` - replications of various classical experiments
-
-### Quick start
-To run the program please install dependencies
-`pip install -r requirements.txt`
-
-
-
-
 
 
 
@@ -212,7 +218,7 @@ Exp 3 nonintercorrelated:        0.66        0.60        0.59
 Exp 3 intercorrelated:           0.77        0.78        0.70
 ```
 All four conditions match the paper qualitatively (intercorrelated
-> nonintercorrelated) and within ~10% quantitatively. 
+ nonintercorrelated) and within ~10% quantitatively. 
 
 ### Real datasets
 #### Mushrooms
@@ -266,6 +272,3 @@ plotted as line, the trials are independent! We discovered a fascinating phenome
 has a massive downgrade of performance!
 
 ![SUSTAIN performance.png](photos/SUSTAIN%20performance.png)
-
-### N.B. 
-This project was originally created without any AI use and then refined with Claude Code. 
