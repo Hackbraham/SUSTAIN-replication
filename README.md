@@ -1,7 +1,7 @@
 # SUSTAIN-replication
 
 **AI**: This project was originally created without any AI use and then refined with Claude Code. 
-The `README.md` was created manually (no AI slop ;)), and then Claude and Quen 4B were used soely
+The `README.md` was created manually (no AI slop ;)), and then Claude and qwen3-4b-2507 were used solely
 for grammatical correction. 
 
 
