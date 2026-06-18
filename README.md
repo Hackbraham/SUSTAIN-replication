@@ -77,6 +77,16 @@ for phenomena ranging from prototype-like abstraction to exemplar-like sensitivi
   * `sustain.py` - the core of the model functionalities
 * `replications.py` - replications of various classical experiments
 
+### Quick start
+To run the program please install dependencies
+`pip install -r requirements.txt`
+
+
+
+
+
+
+
 ## SUSTAIN in experiments
 We conducted a series of experiments whose aim was to test the model's performance in 
 a set of artificial scenarios implemented in the original paper as well as working 
