@@ -305,18 +305,40 @@ def run_medin_1983(
 # Inference vs. classification learning
 # =============================================================================
 
-# Table 5 of Love et al. (2004): Yamauchi & Markman (1998) — linear structure
+# Table 5 of Love et al. (2004) / Table 1 of Yamauchi & Markman (1998) —
+# linear structure. Category prototypes are (1,1,1,1) and (0,0,0,0); each
+# exemplar's "exception feature" is the dim where it differs from its
+# prototype, and those dims are excluded from inference queries per the
+# original procedure (Yamauchi & Markman 1998, p. 69).
 YAMAUCHI_LINEAR = [
     # (d1, d2, d3, d4, category)
     (1, 1, 1, 0, 0), (1, 1, 0, 1, 0), (1, 0, 1, 1, 0), (0, 1, 1, 1, 0),
     (0, 0, 0, 1, 1), (0, 0, 1, 0, 1), (0, 1, 0, 0, 1), (1, 0, 0, 0, 1),
 ]
+YAMAUCHI_LINEAR_PROTOTYPES = {0: (1, 1, 1, 1), 1: (0, 0, 0, 0)}
 
-# Table 6 of Love et al. (2004): Yamauchi et al. (2002) — nonlinear structure
+# Table 6 of Love et al. (2004): Yamauchi et al. (2002) — nonlinear structure.
+# No prototype-based exception-feature exclusion is specified for the
+# nonlinear case, so all four perceptual dims are queryable.
 YAMAUCHI_NONLINEAR = [
     (1, 1, 1, 1, 0), (1, 1, 0, 0, 0), (0, 0, 1, 1, 0),
     (1, 1, 0, 1, 1), (0, 1, 1, 0, 1), (1, 0, 0, 0, 1),
 ]
+YAMAUCHI_NONLINEAR_PROTOTYPES = None
+
+
+def _queryable_perceptual_dims(stim, prototypes, n_perceptual: int) -> list[int]:
+    """
+    Return the perceptual dims that may be queried on an inference trial.
+    For the linear structure (Yamauchi & Markman 1998), the dim that
+    differs from the stim's category prototype is the "exception feature"
+    and is excluded. For the nonlinear structure, all dims are queryable.
+    """
+    if prototypes is None:
+        return list(range(n_perceptual))
+    cat = stim[-1]
+    proto = prototypes[cat]
+    return [d for d in range(n_perceptual) if stim[d] == proto[d]]
 
 
 def _yamauchi_accuracy_criterion(block_accs: list[float],
@@ -343,13 +365,15 @@ def run_yamauchi_inference_class(
 
     Both tasks use the same 4-perceptual-dim + 1-category-label stimuli.
     - Classification: the category label is queried; perceptual dims given.
-    - Inference: the category label is given; one perceptual dim is queried
-      (the queried dim cycles across the 4 perceptual dims within a block).
+    - Inference: the category label is given; one perceptual dim is queried.
 
-    Block construction (mimicking the human procedure):
+    Block construction (Yamauchi & Markman 1998, p. 69: "Each stimulus
+    appeared once in each block"):
     - Classification block = each stimulus presented once (label queried).
-    - Inference block      = each (stimulus, perceptual_dim) pair presented
-      once (that dim queried).
+    - Inference block      = each stimulus presented once with a single
+      random non-exception perceptual dim queried. Exception features
+      (the dim where the stim differs from its category prototype) are
+      excluded from queries.
 
     Criterion: mean accuracy >= 90% across 3 consecutive blocks; max 30 blocks.
 
@@ -371,12 +395,12 @@ def run_yamauchi_inference_class(
     rng = np.random.default_rng(seed)
 
     structures = {
-        'linear':    YAMAUCHI_LINEAR,
-        'nonlinear': YAMAUCHI_NONLINEAR,
+        'linear':    (YAMAUCHI_LINEAR, YAMAUCHI_LINEAR_PROTOTYPES),
+        'nonlinear': (YAMAUCHI_NONLINEAR, YAMAUCHI_NONLINEAR_PROTOTYPES),
     }
 
     results = {}
-    for struct_name, stimuli_table in structures.items():
+    for struct_name, (stimuli_table, prototypes) in structures.items():
         for task in ('inference', 'classification'):
             blocks_list = []
             for _ in range(n_simulations):
@@ -387,22 +411,25 @@ def run_yamauchi_inference_class(
                 )
                 model.reset(dim_sizes=dim_sizes, initial_lambdas=initial_lambdas)
 
-                # Build trial set for one block
-                if task == 'classification':
-                    trial_template = [
-                        (list(stim), label_dim) for stim in stimuli_table
-                    ]
-                else:  # inference
-                    trial_template = []
-                    for stim in stimuli_table:
-                        for pdim in range(n_perceptual):
-                            trial_template.append((list(stim), pdim))
-
                 block_accs: list[float] = []
                 blocks_to_criterion = max_blocks
                 for block in range(1, max_blocks + 1):
-                    trials = trial_template.copy()
-                    rng.shuffle(trials)
+                    # Build this block's trial list: every stim appears
+                    # exactly once. For inference the queried dim is a
+                    # fresh random non-exception perceptual dim per stim
+                    # per block.
+                    block_stim_order = list(stimuli_table)
+                    rng.shuffle(block_stim_order)
+                    if task == 'classification':
+                        trials = [(list(stim), label_dim)
+                                  for stim in block_stim_order]
+                    else:  # inference
+                        trials = []
+                        for stim in block_stim_order:
+                            queryable = _queryable_perceptual_dims(
+                                stim, prototypes, n_perceptual)
+                            q = int(rng.choice(queryable))
+                            trials.append((list(stim), q))
 
                     n_correct = 0
                     for stim, q in trials:
@@ -447,71 +474,102 @@ def _billman_make_item(
     ]
 
 
-def _billman_templates(condition: str, experiment: int) -> list[list]:
+def _billman_templates(
+    condition: str, experiment: int,
+) -> tuple[list[list], list[list[int]]]:
     """
-    Return the family of templates for a Billman & Knutson condition.
+    Return the templates and the correlation groups for a Billman &
+    Knutson condition.
+
+    Each "correlation group" is a list of dim indices that all share a
+    single covarying value within a template (the participant could
+    learn that group as a single rule, and any 2-of-N pair from the
+    group is a valid target rule for the missing-parts test).
 
     Templates encode the correlations of Table 8 of Love et al. (2004):
         Exp 2  noninter.    : (v,v,*,*,*,*,*) for v in 0..2          (3 templates)
+                              1 correlation group: [d0, d1]
         Exp 2  intercorr.   : (v,v,v,v,*,*,*) for v in 0..2          (3 templates)
-        Exp 3  noninter.    : 9 templates, each fixing one pairwise correlation
+                              1 correlation group: [d0, d1, d2, d3]
+        Exp 3  noninter.    : (v,v,w,w,*,*,*)                        (9 templates)
+                              2 correlation groups: [d0,d1] and [d2,d3]
         Exp 3  intercorr.   : (v,v,v,v,*,*,*) — same as Exp 2 intercorr.
     """
     if experiment == 2:
         if condition == 'nonintercorrelated':
-            return [[v, v, None, None, None, None, None] for v in range(3)]
+            return ([[v, v, None, None, None, None, None] for v in range(3)],
+                    [[0, 1]])
         elif condition == 'intercorrelated':
-            return [[v, v, v, v, None, None, None] for v in range(3)]
+            return ([[v, v, v, v, None, None, None] for v in range(3)],
+                    [[0, 1, 2, 3]])
     elif experiment == 3:
         if condition == 'nonintercorrelated':
-            templates = []
-            for v in range(3):
-                for w in range(3):
-                    templates.append([v, v, w, w, None, None, None])
-            return templates
+            templates = [
+                [v, v, w, w, None, None, None]
+                for v in range(3) for w in range(3)
+            ]
+            return (templates, [[0, 1], [2, 3]])
         elif condition == 'intercorrelated':
-            return [[v, v, v, v, None, None, None] for v in range(3)]
+            return ([[v, v, v, v, None, None, None] for v in range(3)],
+                    [[0, 1, 2, 3]])
     raise ValueError(f"Unknown Billman condition/experiment: {condition}, {experiment}")
 
 
 def _billman_make_pair(
     template: list,
+    correlation_groups: list[list[int]],
     rng: np.random.Generator,
 ) -> tuple[list[int], list[int]]:
     """
-    Build a forced-choice pair from one template.
+    Build a forced-choice pair from one template, following the
+    "missing-parts method" of Billman & Knutson (1996, p. 463 and
+    Table 2).
 
-    The "correct" item is consistent with the template (preserves all
-    constraints implicit in the template). The "distractor" violates one
-    of the fixed values, breaking the correlation. Two of the seven
-    perceptual dimensions are then marked unknown (-1) for both items —
-    drawn only from positions that are "free" in the template, so the
-    correlation the distractor violates remains visible.
+    A "target rule" is a pair of dims drawn from the SAME correlation
+    group (i.e. two dims that actually covary in the training data).
+    The distractor mispairs those two dims' values, violating that one
+    correlation. Every other fixed-value dim — both the remaining dims
+    in the target rule's correlation group AND any dims belonging to
+    other correlation groups — is blanked, so the model cannot use a
+    different correlation to make the judgment. Free (noise) dims stay
+    visible.
+
+    This matters: it makes the visible structure for both items consist
+    of (2 correlated target-rule dims) + (free noise dims). For the
+    distractor, two clusters now become equally-good matches (one
+    matching the correct value on dim A, another on dim B), so cluster
+    competition through Eq. 6 stops saturating to a single winner and
+    `C_out` actually differs between the items.
     """
     correct = _billman_make_item(template, rng)
     fixed_positions = [i for i, v in enumerate(template) if v is not None]
-    free_positions = [i for i, v in enumerate(template) if v is None]
 
-    # Blank up to 2 dims from the FREE positions only, so the visible
-    # part of both items still exposes the template's fixed structure
-    # (and thus exposes the distractor's violation).
-    n_blank = min(2, len(free_positions))
-    if n_blank > 0:
-        blank_idxs = rng.choice(free_positions, size=n_blank, replace=False)
+    # Pick a real correlation group as the target rule, then two dims
+    # within it.
+    groups_with_2plus = [g for g in correlation_groups if len(g) >= 2]
+    if groups_with_2plus:
+        group = groups_with_2plus[int(rng.integers(0, len(groups_with_2plus)))]
+        target = list(rng.choice(group, size=2, replace=False))
+        target_a, target_b = int(target[0]), int(target[1])
+
+        # Distractor mispairs the two target-rule values.
+        new_val = (correct[target_b] + int(rng.integers(1, 3))) % 3
+        distractor = correct.copy()
+        distractor[target_b] = new_val
+
+        # Blank every fixed dim that is NOT in the target rule — both the
+        # other members of the target's correlation group and any dims
+        # from other correlation groups.
+        for i in fixed_positions:
+            if i != target_a and i != target_b:
+                correct[i] = -1
+                distractor[i] = -1
     else:
-        blank_idxs = np.array([], dtype=int)
-
-    # Pick a fixed position to perturb (always visible since we never blank
-    # fixed positions)
-    violated = int(rng.choice(fixed_positions))
-    new_val = (correct[violated] + int(rng.integers(1, 3))) % 3
-    distractor = correct.copy()
-    distractor[violated] = new_val
-
-    for b in blank_idxs:
-        b = int(b)
-        correct[b] = -1
-        distractor[b] = -1
+        # Degenerate fallback: no usable correlation group.
+        violated = fixed_positions[0]
+        new_val = (correct[violated] + int(rng.integers(1, 3))) % 3
+        distractor = correct.copy()
+        distractor[violated] = new_val
     return correct, distractor
 
 
@@ -571,7 +629,7 @@ def run_billman_knutson_1996(
 
     results = {}
     for experiment, condition in experiments:
-        templates = _billman_templates(condition, experiment)
+        templates, correlation_groups = _billman_templates(condition, experiment)
 
         accuracies = []
         for sim_idx in range(n_simulations):
@@ -601,7 +659,9 @@ def run_billman_knutson_1996(
             p_correct_sum = 0.0
             for _ in range(n_test_pairs):
                 tmpl = templates[int(rng.integers(0, len(templates)))]
-                correct, distractor = _billman_make_pair(tmpl, rng)
+                correct, distractor = _billman_make_pair(
+                    tmpl, correlation_groups, rng,
+                )
                 # Append unitary category dim as queried (value irrelevant
                 # since the dim has only one possible value)
                 correct_full = correct + [0]
