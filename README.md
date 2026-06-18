@@ -44,7 +44,126 @@ a set of artificial scenarios implemented in the original paper as well as worki
 with real datasets.
 
 ### Shepard's experiment
-#TODO
+##### Stimuli
+Eight stimuli varying along three binary perceptual dimensions plus a
+binary category label (Shepard, Hovland & Jenkins, 1961). The same eight
+items are split into two categories in six different ways, producing the
+six classification problem types of increasing structural difficulty
+(I through VI).
+
+##### Experiment
+Supervised classification. On every trial the label is queried and
+corrective feedback is given. A learning block is one random pass through
+all eight items; the criterion is four consecutive perfect blocks (max 32
+blocks). Best-fitting parameters from Table 1 ("Six types") of Love et
+al. (2004) are used.
+
+##### Results
+The expected human ordering is `I < II < III ≈ IV ≈ V < VI`. Our
+replication recovers the qualitative ordering, with magnitudes slightly
+inflated relative to the paper:
+```pycon
+Type I:   2.9 blocks    (~3 expected)
+Type II:  10.1 blocks   (low expected)
+Type III: 17.4 blocks   (~12 expected)
+Type IV:  16.5 blocks   (~12 expected)
+Type V:   20.8 blocks   (~12 expected)
+Type VI:  27.1 blocks   (~16-20 expected)
+```
+SUSTAIN recruits ≈2.4 clusters for Type I and ≈8 for Type VI, matching
+the paper's account of complexity scaling with category structure.
+
+### Medin, Dewey & Murphy (1983)
+##### Stimuli
+Nine stimuli on four binary perceptual dimensions plus a "distinctive"
+dimension that takes a unique value for each item (the idiosyncratic
+photographic detail). Two conditions: **first-name** (nine unique labels,
+i.e. identification learning) and **last-name** (two labels, i.e.
+categorisation learning).
+
+##### Experiment
+Supervised classification, max 16 blocks, criterion of 2 consecutive
+perfect blocks. The distinctive dimension receives an elevated initial
+tuning `λ_distinct = 4.62` (Table 1, "First/last name").
+
+##### Results
+The paper reports the counter-intuitive finding that
+identification (first-name) is faster than categorisation (last-name)
+when stimuli are distinctive:
+```pycon
+                   humans   paper-SUSTAIN   ours
+first_name (id):    7.1         7.2         6.2
+last_name  (cat):   9.7         9.7         3.4
+```
+Our first-name number lands on target, but our last-name converges much
+faster than the paper, reversing the qualitative pattern (see
+`DISCREPANCIES.md`).
+
+### Yamauchi & Markman (1998) / Yamauchi et al. (2002)
+##### Stimuli
+Four binary perceptual dimensions + a binary category label. Two category
+structures: a **linear** structure (eight items, prototype-separable;
+Yamauchi & Markman 1998, Table 5) and a **nonlinear** structure (six
+items; Yamauchi et al. 2002, Table 6).
+
+##### Experiment
+Two tasks per structure:
+* **Classification** — category label queried, perceptual dims given.
+* **Inference** — category label given, one perceptual dim queried.
+
+Each block presents every stimulus exactly once (per Yamauchi & Markman
+1998 p. 69: "Each stimulus appeared once in each block"). For inference
+the queried dim is a random *non-exception* perceptual dim — the
+exception feature (the dim where the exemplar differs from its category
+prototype) is excluded. Max 30 blocks; criterion is ≥ 90% mean accuracy
+across three consecutive blocks. The category-label dim receives an
+elevated initial tuning `λ_label = 5.15` (Table 1, "Infer./class.").
+
+##### Results
+```pycon
+                            humans   paper-SUSTAIN   argmax    stochastic
+linear    inference          6.5          7.5         4.9       30.0 (ceiling)
+linear    classification    12.3         11.2         1.9        6.4
+nonlinear inference         27.4         28.6         7.7       29.5
+nonlinear classification    10.4         10.6         2.1        7.3
+```
+With argmax scoring, linear inference is accurate. With stochastic
+sampling, nonlinear inference matches the paper closely. The "right"
+scoring rule for SUSTAIN is left underspecified by both papers
+(see `DISCREPANCIES.md`).
+
+### Billman & Knutson (1996) Experiments 2 & 3
+##### Stimuli
+Seven ternary perceptual dimensions per item. Two correlation
+structures per experiment:
+* **Nonintercorrelated** — independent pairwise correlations (e.g.
+  d1=d2; d3=d4; d5=d6).
+* **Intercorrelated** — a single block of jointly correlated dims (e.g.
+  d1=d2=d3=d4).
+
+##### Experiment
+Fully unsupervised: the model studies items for four blocks without
+feedback, recruiting clusters whenever activation drops below
+`τ = 0.5` (Eq. 11). At test the model is given 45 forced-choice pairs.
+Following Billman & Knutson (1996, p. 463 and Table 2)'s "missing-parts"
+procedure, each test pair has a *target rule* (a pair of correlated
+dims) and the distractor mispairs those two values. The two blanked
+dims are not random — they are the *other potentially informative
+attributes* (the dims that share other correlations with the target
+rule), so the model cannot use a different correlation to make the
+judgment. Response probability is computed via Eq. 8 across the two
+items' `C^out` on the (unitary) category-label output unit.
+
+##### Results
+```pycon
+                                humans   paper-SUSTAIN   ours
+Exp 2 nonintercorrelated:        0.62        0.66        0.62
+Exp 2 intercorrelated:           0.73        0.78        0.69
+Exp 3 nonintercorrelated:        0.66        0.60        0.59
+Exp 3 intercorrelated:           0.77        0.78        0.70
+```
+All four conditions match the paper qualitatively (intercorrelated
+> nonintercorrelated) and within ~10% quantitatively. 
 
 ### Real datasets
 #### Mushrooms
@@ -95,7 +214,7 @@ The model performed excellent. Very high accuracy
 
 
 
-## SUSTAIN's liminations
+## SUSTAIN's limitations
 
 
 ### N.B. 
