@@ -22,7 +22,7 @@ from typing import Optional
 
 import numpy as np
 
-from sustain import SUSTAIN
+from src.sustain import SUSTAIN
 
 
 def _trial_correct(probs: np.ndarray, target: int,
