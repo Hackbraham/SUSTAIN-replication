@@ -32,17 +32,18 @@ of "animal with a heart" and "animals with a kidneys".
   * `sustain.py` - the core of the model functionalities
 
 ### Model principles of operation
-#TODO (stratified structure, adaptive recruitment, incremental learning, supervised 
-vs unsupervised)
+SUSTAIN represents categories as a set of clusters, or recruited units, that grow incrementally rather than being fixed in advance. Learning begins with a single cluster centered on the first item encountered, biasing the model toward the simplest possible account of a category's structure. As new items arrive, each cluster's activation is determined by the (attention-weighted) similarity between the item and the cluster's position, and these clusters compete so that the most active one tends to dominate the representation of a given item, in the spirit of a "winner take most" rather than a fully distributed code. The model only recruits an additional cluster when its current set of clusters cannot adequately handle an item, that is, when it encounters a surprising event such as being told a bat is a mammal rather than a bird under supervised learning; the new cluster is centered on that surprising item and becomes available to explain subsequent events, allowing the network's complexity to track the complexity of the category structure rather than overfitting from the start.
+
+A selective attention mechanism works alongside this clustering process, weighting stimulus dimensions unevenly so the network focuses on whichever dimensions are most diagnostic for the current task, which further pushes the model toward parsimonious solutions. These attentional weights, along with the associations linking clusters to output values, are tuned by error-driven (gradient descent) learning, but only on the dimension the model is currently asked to predict. This is a query-based scheme that lets the same mechanism support different learning paradigms: predicting a category label yields ordinary supervised classification, predicting a missing feature yields inference learning, and predicting an item's own features with no externally supplied label yields unsupervised learning. Because cluster recruitment, attention allocation, and associative learning are all sensitive to the task and to the feedback the model receives, the substructure SUSTAIN discovers within a category is shaped jointly by the statistical structure of the stimuli and by the goals and demands of the particular learning task, which is how the model accounts for phenomena ranging from prototype-like abstraction to exemplar-like sensitivity to exceptions within a single architecture.
 
 ### Model workflow
 
 ## SUSTAIN in experiments
-We conducted a series of experiments which aim was to test the model's performents in 
-a set of artificial scenarios implemented in Shepard's paper as well as while working 
+We conducted a series of experiments whose aim was to test the model's performance in 
+a set of artificial scenarios implemented in the original paper as well as working 
 with real datasets.
 
-### Shepard's experiments
+### Shepard's experiment
 #TODO
 
 ### Real datasets
@@ -92,8 +93,7 @@ F1 SD: 0.01
 ```
 The model performed excellent. Very high accuracy 
 
-#### Another experiment
-#TODO
+
 
 ## SUSTAIN's liminations
 
