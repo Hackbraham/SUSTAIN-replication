@@ -257,12 +257,5 @@ has a massive downgrade of performance!
 
 ![SUSTAIN performance.png](photos/SUSTAIN%20performance.png)
 
-
-
-
-
-## SUSTAIN's limitations
-
-
 ### N.B. 
 This project was originally created without any AI use and then refined with Claude Code. 
