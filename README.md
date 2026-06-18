@@ -69,7 +69,7 @@ by the statistical structure of the stimuli and by the goals and demands of the 
 for phenomena ranging from prototype-like abstraction to exemplar-like sensitivity to exceptions within a single architecture.
 
 ## Technical project description
-`### Structure`
+### Structure
 * `notebooks` - a folder with experiment and actual usage of SUSTAIN
   * `datasets` - data for experiments
   * `sustain_mushrooms.ipynb` - test of SUSTAIN on mushroom dataset
